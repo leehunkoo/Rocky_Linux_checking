@@ -1,0 +1,18 @@
+# 실행 결과물 (실행 PC/서버의 실제 점검 데이터가 담기므로 커밋 금지)
+report_result.html
+final_report_result.html
+
+# 저작권이 있는 KISA 가이드 PDF (배포 대상 아님)
+*.pdf
+
+# Python 캐시
+__pycache__/
+*.pyc
+
+# 로컬 전용 설정 (개인 환경 도구 권한 등)
+.claude/
+config.json
+
+# 에디터/OS 캐시
+.vscode/
+.DS_Store

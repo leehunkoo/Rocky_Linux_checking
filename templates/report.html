@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KISA 주요정보통신기반시설 기술적 취약점 분석 Report</title>
+    <style>
+        :root {
+            --ios-bg: #f2f2f7;
+            --ios-card-bg: #ffffff;
+            --ios-text-main: #1c1c1e;
+            --ios-text-muted: #8e8e93;
+            --ios-border: #e5e5ea;
+
+            /* iOS 시스템 컬러 변형 (부드러운 파스텔톤) */
+            --ios-green: #34c759;
+            --ios-green-bg: #e5f9eb;
+            --ios-red: #ff3b30;
+            --ios-red-bg: #ffebeb;
+            --ios-orange: #ff9500;
+            --ios-orange-bg: #fff5e6;
+            --ios-gray: #8e8e93;
+            --ios-gray-bg: #f2f2f7;
+            --ios-blue: #007aff;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--ios-bg);
+            color: var(--ios-text-main);
+            margin: 0;
+            padding: 30px 20px 80px;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .container {
+            max-width: 1080px;
+            margin: 0 auto;
+        }
+
+        /* iOS 스타일 헤더 */
+        header {
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        header h1 {
+            font-size: 32px;
+            font-weight: 800;
+            margin: 0 0 8px 0;
+            letter-spacing: -1px;
+            color: var(--ios-text-main);
+        }
+
+        header p {
+            color: var(--ios-text-muted);
+            margin: 0;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        header .gen-time {
+            font-size: 12px;
+            color: var(--ios-text-muted);
+            text-align: right;
+        }
+
+        /* ===== 상단 개요 영역: 도넛 차트 + 요약 카드 ===== */
+        .overview {
+            display: grid;
+            grid-template-columns: 200px 1fr;
+            gap: 16px;
+            margin-bottom: 22px;
+        }
+
+        @media (max-width: 700px) {
+            .overview { grid-template-columns: 1fr; }
+        }
+
+        .donut-card {
+            background-color: var(--ios-card-bg);
+            border-radius: 16px;
+            padding: 18px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+            border: 1px solid rgba(0, 0, 0, 0.01);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .donut-wrap {
+            position: relative;
+            width: 140px;
+            height: 140px;
+        }
+
+        .donut-wrap svg { transform: rotate(-90deg); }
+
+        .donut-ring-bg { fill: none; stroke: var(--ios-gray-bg); stroke-width: 14; }
+
+        .donut-ring-seg {
+            fill: none;
+            stroke-width: 14;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 1s cubic-bezier(0.65, 0, 0.35, 1);
+        }
+
+        .donut-center {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .donut-center .pct {
+            font-size: 26px;
+            font-weight: 800;
+            line-height: 1;
+        }
+
+        .donut-center .pct-label {
+            font-size: 10px;
+            color: var(--ios-text-muted);
+            font-weight: 600;
+            margin-top: 2px;
+        }
+
+        .donut-legend {
+            display: flex;
+            gap: 10px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--ios-text-muted);
+        }
+
+        .donut-legend span { display: inline-flex; align-items: center; gap: 4px; }
+        .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+
+        .summary-dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 16px;
+        }
+
+        .summary-card {
+            background-color: var(--ios-card-bg);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+            border: 1px solid rgba(0, 0, 0, 0.01);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            cursor: pointer;
+        }
+
+        .summary-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+        }
+
+        .summary-card .label {
+            font-size: 13px;
+            color: var(--ios-text-muted);
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .summary-card .count {
+            font-size: 36px;
+            font-weight: 800;
+            line-height: 1;
+        }
+
+        /* ===== 컨트롤 바: 세그먼트 필터 + 검색 ===== */
+        .control-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin: 22px 0;
+        }
+
+        .filter-container {
+            display: inline-flex;
+            background-color: rgba(120, 120, 128, 0.12);
+            padding: 3px;
+            border-radius: 9px;
+            gap: 2px;
+        }
+
+        .filter-btn {
+            background: none;
+            border: none;
+            padding: 6px 16px;
+            border-radius: 7px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--ios-text-main);
+            transition: all 0.2s ease;
+        }
+
+        .filter-btn.active {
+            background-color: var(--ios-card-bg);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        }
+
+        .search-box {
+            position: relative;
+            flex: 1;
+            min-width: 200px;
+            max-width: 320px;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 8px 14px 8px 32px;
+            border-radius: 9px;
+            border: 1px solid var(--ios-border);
+            background-color: var(--ios-card-bg);
+            font-size: 13px;
+            color: var(--ios-text-main);
+            outline: none;
+            transition: box-shadow 0.15s ease;
+        }
+
+        .search-box input:focus {
+            box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.15);
+            border-color: var(--ios-blue);
+        }
+
+        .search-box::before {
+            content: "";
+            position: absolute;
+            left: 11px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 12px;
+            height: 12px;
+            border: 2px solid var(--ios-text-muted);
+            border-radius: 50%;
+        }
+
+        .search-box::after {
+            content: "";
+            position: absolute;
+            left: 20px;
+            top: 62%;
+            width: 6px;
+            height: 2px;
+            background: var(--ios-text-muted);
+            transform: rotate(45deg);
+        }
+
+        .empty-state {
+            display: none;
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--ios-text-muted);
+            font-size: 14px;
+        }
+
+        /* iOS 리스트 그룹 */
+        .list-group {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .list-item {
+            background-color: var(--ios-card-bg);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+            border: 1px solid rgba(0, 0, 0, 0.01);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            animation: fadeIn 0.35s ease both;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .list-item[data-status="Vulnerable"] { border-left: 3px solid var(--ios-red); }
+        .list-item[data-status="PASS(양호)"] { border-left: 3px solid var(--ios-green); }
+        .list-item[data-status="Manual Check"] { border-left: 3px solid var(--ios-orange); }
+
+        .item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: 1px solid var(--ios-border);
+            padding-bottom: 14px;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .item-title-box {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .item-id {
+            background-color: #f2f2f7;
+            color: #555;
+            font-family: monospace;
+            font-size: 13px;
+            font-weight: 700;
+            padding: 4px 8px;
+            border-radius: 6px;
+        }
+
+        .item-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--ios-text-main);
+        }
+
+        .item-level {
+            font-size: 11px;
+            font-weight: 600;
+            color: #ff9500;
+            background-color: #fff5e6;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-left: 6px;
+        }
+
+        .badge {
+            font-size: 12px;
+            font-weight: 700;
+            padding: 6px 12px;
+            border-radius: 20px;
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        .badge-pass { background-color: var(--ios-green-bg); color: var(--ios-green); }
+        .badge-vulnerable { background-color: var(--ios-red-bg); color: var(--ios-red); }
+        .badge-manual { background-color: var(--ios-orange-bg); color: var(--ios-orange); }
+        .badge-na { background-color: var(--ios-gray-bg); color: var(--ios-gray); }
+
+        .item-body {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .item-body { grid-template-columns: 1fr; }
+        }
+
+        .info-section {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .section-label {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--ios-text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .section-content {
+            font-size: 14px;
+            color: #3a3a3c;
+            line-height: 1.5;
+        }
+
+        .setting-box {
+            background-color: #f8f9fa;
+            border: 1px solid var(--ios-border);
+            border-radius: 10px;
+            padding: 12px;
+            font-family: "SFMono-Regular", Consolas, monospace;
+            font-size: 13px;
+            color: #1c1c1e;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        /* 명령어 블록 (더보기/복사 기능 포함) */
+        .cmd-wrap {
+            position: relative;
+            margin-top: 4px;
+        }
+
+        .cmd-toolbar {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 4px;
+        }
+
+        .copy-btn {
+            background: rgba(120, 120, 128, 0.16);
+            color: var(--ios-text-muted);
+            border: none;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 4px 9px;
+            cursor: pointer;
+            transition: background 0.15s ease, color 0.15s ease;
+        }
+
+        .copy-btn:hover { background: rgba(120, 120, 128, 0.28); color: var(--ios-text-main); }
+        .copy-btn.copied { background: var(--ios-green-bg); color: var(--ios-green); }
+
+        .cmd-block {
+            background-color: #1c1c1e;
+            color: #f2f2f7;
+            font-family: "SFMono-Regular", Consolas, monospace;
+            font-size: 12px;
+            padding: 12px;
+            border-radius: 10px;
+            white-space: pre-wrap;
+            word-break: break-all;
+            /* 펼친 상태: 아무리 길어도 뷰포트 60% 높이로 제한하고, 넘치는 내용은 내부 스크롤로
+               볼 수 있게 함(예전엔 고정 1000px로 잘라버려서 그보다 긴 내용은 아예 안 보였음) */
+            max-height: 60vh;
+            overflow-y: auto;
+            overflow-x: hidden;
+            transition: max-height 0.35s ease;
+            scrollbar-width: thin;
+            scrollbar-color: #55555a #1c1c1e;
+        }
+
+        .cmd-block::-webkit-scrollbar { width: 8px; }
+        .cmd-block::-webkit-scrollbar-track { background: #1c1c1e; }
+        .cmd-block::-webkit-scrollbar-thumb { background: #55555a; border-radius: 4px; }
+        .cmd-block::-webkit-scrollbar-thumb:hover { background: #6e6e73; }
+
+        .cmd-block.collapsed { max-height: 130px; overflow: hidden; }
+
+        .cmd-fade {
+            display: none;
+            position: relative;
+            height: 0;
+        }
+
+        .cmd-block.collapsed + .cmd-fade {
+            display: block;
+            height: 36px;
+            margin-top: -36px;
+            background: linear-gradient(to bottom, rgba(28,28,30,0), #1c1c1e);
+            border-radius: 0 0 10px 10px;
+            pointer-events: none;
+        }
+
+        .more-btn {
+            display: none;
+            margin: 8px auto 0;
+            background: none;
+            border: none;
+            color: var(--ios-blue);
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            padding: 4px 10px;
+        }
+
+        .more-btn.visible { display: block; }
+
+        .guide-box {
+            font-size: 12px;
+            color: var(--ios-text-muted);
+            margin-top: 6px;
+            line-height: 1.4;
+        }
+
+        footer {
+            text-align: center;
+            color: var(--ios-text-muted);
+            font-size: 12px;
+            margin-top: 40px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <div>
+            <h1>Vulnerable Security Check Report</h1>
+            <p>KISA Unix/Linux 주요 정보통신기반시설 기술적 취약점 분석·평가</p>
+        </div>
+        <div class="gen-time" id="gen-time"></div>
+    </header>
+
+    <div class="overview">
+        <div class="donut-card">
+            <div class="donut-wrap">
+                <svg viewBox="0 0 120 120" width="140" height="140">
+                    <circle class="donut-ring-bg" cx="60" cy="60" r="50"></circle>
+                    <circle id="donut-vuln" class="donut-ring-seg" cx="60" cy="60" r="50" stroke="#ff3b30"></circle>
+                    <circle id="donut-manual" class="donut-ring-seg" cx="60" cy="60" r="50" stroke="#ff9500"></circle>
+                    <circle id="donut-pass" class="donut-ring-seg" cx="60" cy="60" r="50" stroke="#34c759"></circle>
+                </svg>
+                <div class="donut-center">
+                    <div class="pct" id="donut-pct">0%</div>
+                    <div class="pct-label">양호율</div>
+                </div>
+            </div>
+            <div class="donut-legend">
+                <span><i class="dot" style="background:var(--ios-green)"></i>양호</span>
+                <span><i class="dot" style="background:var(--ios-red)"></i>취약</span>
+                <span><i class="dot" style="background:var(--ios-orange)"></i>확인</span>
+            </div>
+        </div>
+
+        <div class="summary-dashboard">
+            <div class="summary-card" style="border-top: 4px solid var(--ios-text-main);" onclick="filterStatus('ALL')">
+                <div class="label">Total</div>
+                <div class="count" id="cnt-all">0</div>
+            </div>
+            <div class="summary-card" style="border-top: 4px solid var(--ios-green);" onclick="filterStatus('PASS(양호)')">
+                <div class="label" style="color: var(--ios-green);">Pass</div>
+                <div class="count" style="color: var(--ios-green);" id="cnt-pass">0</div>
+            </div>
+            <div class="summary-card" style="border-top: 4px solid var(--ios-red);" onclick="filterStatus('Vulnerable')">
+                <div class="label" style="color: var(--ios-red);">Vulnerable</div>
+                <div class="count" style="color: var(--ios-red);" id="cnt-vuln">0</div>
+            </div>
+            <div class="summary-card" style="border-top: 4px solid var(--ios-orange);" onclick="filterStatus('Manual Check')">
+                <div class="label" style="color: var(--ios-orange);">Manual Check</div>
+                <div class="count" style="color: var(--ios-orange);" id="cnt-manual">0</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="control-bar">
+        <div class="filter-container" id="filter-container">
+            <button class="filter-btn active" data-filter="ALL" onclick="filterStatus('ALL', this)">전체</button>
+            <button class="filter-btn" data-filter="PASS(양호)" onclick="filterStatus('PASS(양호)', this)">양호</button>
+            <button class="filter-btn" data-filter="Vulnerable" onclick="filterStatus('Vulnerable', this)">취약</button>
+            <button class="filter-btn" data-filter="Manual Check" onclick="filterStatus('Manual Check', this)">확인필요</button>
+        </div>
+        <div class="search-box">
+            <input type="text" id="search-input" placeholder="항목 ID, 제목으로 검색" oninput="applySearch()">
+        </div>
+    </div>
+
+    <div class="list-group" id="report-list">
+        <!-- REPORT_ITEMS_PLACEHOLDER -->
+    </div>
+
+    <div class="empty-state" id="empty-state">검색/필터 조건에 해당하는 항목이 없습니다.</div>
+
+    <footer>
+        <p>2026 KISA 주요정보통신기반시설 기술적 취약점 분석·평가 방법 상세가이드 기준 자동 점검 결과</p>
+        <p>
+            Copyright 2026. <strong>leehunkoo</strong>. All rights reserved.<br>
+            <small style="color: #666;">
+                This tool was developed with AI assistance (Claude, Gemini) and thoroughly verified in a dedicated local environment.<br>
+                Licensed under the <a href="https://gnu.org" target="_blank" style="color: inherit; text-decoration: underline;">AGPL-3.0</a>.
+            </small>
+        </p>
+    </footer>
+</div>
+
+<script>
+    let currentFilter = "ALL";
+    let currentQuery = "";
+
+    function initReport() {
+        const items = document.querySelectorAll("#report-list .list-item");
+        let all = items.length;
+        let pass = 0, vuln = 0, manual = 0;
+
+        items.forEach(item => {
+            const status = item.getAttribute("data-status");
+            if (status === "PASS(양호)") pass++;
+            else if (status === "Vulnerable") vuln++;
+            else if (status === "Manual Check") manual++;
+        });
+
+        document.getElementById("cnt-all").innerText = all;
+        document.getElementById("cnt-pass").innerText = pass;
+        document.getElementById("cnt-vuln").innerText = vuln;
+        document.getElementById("cnt-manual").innerText = manual;
+
+        renderDonut(all, pass, vuln, manual);
+        initCmdBlocks();
+
+        const now = new Date();
+        const pad = n => String(n).padStart(2, "0");
+        document.getElementById("gen-time").innerText =
+            `생성 시각: ${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    }
+
+    function renderDonut(all, pass, vuln, manual) {
+        const r = 50;
+        const circumference = 2 * Math.PI * r;
+        const pct = all > 0 ? Math.round((pass / all) * 100) : 0;
+        document.getElementById("donut-pct").innerText = pct + "%";
+
+        if (all === 0) {
+            ["donut-vuln", "donut-manual", "donut-pass"].forEach(id => {
+                document.getElementById(id).style.strokeDasharray = `0 ${circumference}`;
+            });
+            return;
+        }
+
+        // 취약 -> 확인필요 -> 양호 순으로 이어붙여 하나의 링을 구성
+        const segs = [
+            { id: "donut-vuln", value: vuln },
+            { id: "donut-manual", value: manual },
+            { id: "donut-pass", value: pass },
+        ];
+
+        let offsetAccum = 0;
+        segs.forEach(seg => {
+            const el = document.getElementById(seg.id);
+            const segLen = (seg.value / all) * circumference;
+            el.style.strokeDasharray = `${segLen} ${circumference - segLen}`;
+            el.style.strokeDashoffset = -offsetAccum;
+            offsetAccum += segLen;
+        });
+    }
+
+    function initCmdBlocks() {
+        document.querySelectorAll(".cmd-block").forEach(block => {
+            const moreBtn = block.parentElement.querySelector(".more-btn");
+            // 접힌 상태 기준 높이(130px)보다 실제 내용이 길면 더보기 버튼 노출
+            block.classList.add("collapsed");
+            const needsToggle = block.scrollHeight > 140;
+            if (!needsToggle) {
+                block.classList.remove("collapsed");
+                return;
+            }
+            moreBtn.classList.add("visible");
+            moreBtn.innerText = "더보기 ▾";
+            moreBtn.onclick = () => {
+                const collapsed = block.classList.toggle("collapsed");
+                moreBtn.innerText = collapsed ? "더보기 ▾" : "접기 ▴";
+            };
+        });
+    }
+
+    function copyCmd(btn, encodedText) {
+        const text = decodeURIComponent(encodedText);
+        navigator.clipboard.writeText(text).then(() => {
+            const original = btn.innerText;
+            btn.innerText = "복사됨 ✓";
+            btn.classList.add("copied");
+            setTimeout(() => {
+                btn.innerText = original;
+                btn.classList.remove("copied");
+            }, 1500);
+        }).catch(() => {
+            btn.innerText = "복사 실패";
+        });
+    }
+
+    function filterStatus(status, btnEl) {
+        currentFilter = status;
+        const buttons = document.querySelectorAll(".filter-btn");
+        buttons.forEach(btn => btn.classList.remove("active"));
+        if (btnEl) {
+            btnEl.classList.add("active");
+        } else {
+            document.querySelector(`.filter-btn[data-filter="${status}"]`).classList.add("active");
+        }
+        applyFilters();
+    }
+
+    function applySearch() {
+        currentQuery = document.getElementById("search-input").value.trim().toLowerCase();
+        applyFilters();
+    }
+
+    function applyFilters() {
+        const items = document.querySelectorAll("#report-list .list-item");
+        let visibleCount = 0;
+        items.forEach(item => {
+            const itemStatus = item.getAttribute("data-status");
+            const statusMatch = currentFilter === "ALL" || itemStatus === currentFilter;
+            const haystack = (item.getAttribute("data-search") || "").toLowerCase();
+            const queryMatch = currentQuery === "" || haystack.includes(currentQuery);
+            const show = statusMatch && queryMatch;
+            item.style.display = show ? "flex" : "none";
+            if (show) visibleCount++;
+        });
+        document.getElementById("empty-state").style.display = visibleCount === 0 ? "block" : "none";
+    }
+
+    window.onload = initReport;
+</script>
+</body>
+</html>

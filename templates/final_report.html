@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>최종 서버 점검 보고서</title>
+<style>
+    :root {
+        --ink: #1c1c1e;
+        --muted: #6b6b70;
+        --border: #d6d6da;
+        --bg: #eceef1;
+        --card: #ffffff;
+        --green: #1e7e34;
+        --green-bg: #e6f4ea;
+        --red: #c0281c;
+        --red-bg: #fceceb;
+        --orange: #b5650a;
+        --orange-bg: #fdf1e2;
+        --gray: #6b6b70;
+        --gray-bg: #ececee;
+        --accent: #0a5cd8;
+        --navy: #12213d;
+        --navy-2: #1c3358;
+        --gold: #b3892f;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+        font-family: "Malgun Gothic", "Apple SD Gothic Neo", -apple-system, sans-serif;
+        background: var(--bg);
+        color: var(--ink);
+        margin: 0;
+        padding: 24px 18px 60px;
+    }
+
+    .container { max-width: 1180px; margin: 0 auto; }
+
+    /* ===== 도구 모음 (화면 전용) ===== */
+    .toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+        justify-content: space-between;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 12px 16px;
+        margin-bottom: 18px;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+
+    .toolbar .left, .toolbar .right { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+    .btn {
+        border: 1px solid var(--border);
+        background: var(--card);
+        color: var(--ink);
+        border-radius: 7px;
+        padding: 7px 14px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.15s ease, border-color 0.15s ease;
+    }
+
+    .btn:hover { background: #f0f0f2; }
+    .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .btn-primary:hover { background: #084bb3; }
+    .btn-danger { color: var(--red); border-color: #f0c4bf; }
+    .btn-danger:hover { background: var(--red-bg); }
+
+    #save-status { font-size: 12px; color: var(--muted); min-width: 90px; }
+    #save-status.saved { color: var(--green); }
+
+    #detail-toggle-label {
+        font-size: 12px;
+        color: var(--muted);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        cursor: pointer;
+    }
+
+    /* ===== 공통 "종이" 카드 ===== */
+    .page {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        box-shadow: 0 6px 24px rgba(20, 20, 30, 0.06);
+        margin-bottom: 20px;
+        overflow: hidden;
+    }
+
+    /* ===== 표지 ===== */
+    .cover-page {
+        display: flex;
+        flex-direction: column;
+        min-height: 1040px;
+    }
+
+    .cover-top {
+        background: linear-gradient(155deg, var(--navy) 0%, var(--navy-2) 60%, #24406e 100%);
+        color: #fff;
+        padding: 26px 40px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .cover-top::after {
+        content: "";
+        position: absolute;
+        right: -60px;
+        top: -60px;
+        width: 220px;
+        height: 220px;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.05);
+    }
+
+    .cover-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: #ff8a7a;
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 1.5px;
+    }
+
+    .cover-doc-id {
+        font-size: 11px;
+        color: rgba(255,255,255,0.65);
+        text-align: right;
+        line-height: 1.6;
+    }
+
+    .cover-mid {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 60px 40px 40px;
+        background:
+            radial-gradient(circle at 50% 0%, #f7f8fb 0%, #eceef3 100%);
+    }
+
+    .cover-kicker {
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: 2px;
+        color: var(--gold);
+        text-transform: uppercase;
+        margin-bottom: 18px;
+    }
+
+    .cover-title {
+        font-size: 40px;
+        font-weight: 800;
+        letter-spacing: -0.5px;
+        margin: 0 0 10px;
+        color: var(--navy);
+    }
+
+    .cover-subtitle {
+        font-size: 14px;
+        color: var(--muted);
+        letter-spacing: 0.5px;
+        margin: 0 0 46px;
+    }
+
+    .cover-meta {
+        width: min(560px, 100%);
+        border-collapse: collapse;
+        font-size: 13.5px;
+        background: #fff;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    .cover-meta td {
+        border-bottom: 1px solid var(--border);
+        padding: 11px 16px;
+    }
+
+    .cover-meta tr:last-child td { border-bottom: none; }
+
+    .cover-meta td.k {
+        background: #f7f7f9;
+        font-weight: 700;
+        width: 128px;
+        color: var(--muted);
+        border-right: 1px solid var(--border);
+    }
+
+    .cover-meta input {
+        width: 100%;
+        border: none;
+        background: transparent;
+        font-size: 13.5px;
+        font-family: inherit;
+        color: var(--ink);
+        outline: none;
+        text-align: center;
+    }
+
+    .cover-meta input:focus { background: #fffbea; }
+
+    /* ===== 회사 로고 영역 (선택) — 로고 없으면 인쇄 시 그냥 빈 공백으로 보이도록 처리 ===== */
+    .cover-logo-area {
+        min-height: 76px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 10px 40px;
+        position: relative;
+    }
+
+    .cover-logo-img {
+        max-height: 64px;
+        max-width: 260px;
+        object-fit: contain;
+    }
+
+    .cover-logo-placeholder {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .logo-upload-label {
+        font-size: 12px;
+        color: var(--muted);
+        border: 1px dashed var(--border);
+        border-radius: 8px;
+        padding: 10px 22px;
+        cursor: pointer;
+        transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+    }
+
+    .logo-upload-label:hover { color: var(--accent); border-color: var(--accent); background: #f5f8ff; }
+
+    .logo-remove-btn {
+        position: absolute;
+        right: 40px;
+        top: 50%;
+        transform: translateY(-50%);
+        border: none;
+        background: none;
+        color: var(--muted);
+        font-size: 11px;
+        cursor: pointer;
+        text-decoration: underline;
+    }
+
+    .logo-remove-btn:hover { color: var(--red); }
+
+    .cover-bottom {
+        padding: 30px 40px 36px;
+        border-top: 1px solid var(--border);
+        background: #fff;
+    }
+
+    .approval-title {
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 2px;
+        color: var(--muted);
+        text-transform: uppercase;
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .approval-title::before {
+        content: "";
+        width: 4px;
+        height: 14px;
+        background: var(--gold);
+        border-radius: 2px;
+        display: inline-block;
+    }
+
+    table.approval-box {
+        width: 100%;
+        border-collapse: collapse;
+        border: 1.5px solid var(--navy);
+        font-size: 12.5px;
+    }
+
+    table.approval-box th {
+        background: #f2f4f8;
+        color: var(--navy);
+        font-weight: 800;
+        padding: 8px 6px;
+        border: 1px solid var(--border);
+        width: 33.33%;
+    }
+
+    table.approval-box .sign-cell {
+        border: 1px solid var(--border);
+        height: 84px;
+        vertical-align: top;
+        padding: 8px 10px;
+        position: relative;
+    }
+
+    table.approval-box .sign-role {
+        font-size: 11px;
+        color: var(--muted);
+        font-weight: 600;
+    }
+
+    table.approval-box .sign-line {
+        position: absolute;
+        bottom: 14px;
+        left: 10px;
+        right: 10px;
+        font-size: 10.5px;
+        color: var(--muted);
+        display: flex;
+        justify-content: space-between;
+    }
+
+    .confidential-notice {
+        margin-top: 18px;
+        font-size: 11px;
+        line-height: 1.6;
+        color: var(--red);
+        font-weight: 600;
+        text-align: center;
+    }
+
+    .cover-doc-id input {
+        background: transparent;
+        border: none;
+        border-bottom: 1px dotted rgba(255,255,255,0.5);
+        color: #fff;
+        font-size: 11px;
+        font-family: inherit;
+        text-align: right;
+        outline: none;
+        width: 140px;
+    }
+
+    .cover-doc-id input::placeholder { color: rgba(255,255,255,0.45); }
+    .cover-doc-id input:focus { border-bottom-color: #fff; }
+
+    /* ===== 본문 문서 카드 ===== */
+    .doc { padding: 30px 34px; }
+
+    .doc-section-title {
+        font-size: 15px;
+        font-weight: 800;
+        color: var(--navy);
+        margin: 0 0 14px;
+        padding-bottom: 8px;
+        border-bottom: 2px solid var(--navy);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    /* ===== 요약 통계 ===== */
+    .stat-row {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 28px;
+        flex-wrap: wrap;
+    }
+
+    .stat-box {
+        flex: 1;
+        min-width: 110px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 14px 14px 12px;
+        text-align: center;
+        border-top: 3px solid var(--gray);
+        transition: transform .15s ease;
+    }
+
+    .stat-box:hover { transform: translateY(-2px); }
+    .stat-box.st-total { border-top-color: var(--navy); }
+    .stat-box.st-pass { border-top-color: var(--green); }
+    .stat-box.st-vuln { border-top-color: var(--red); }
+    .stat-box.st-manual { border-top-color: var(--orange); }
+    .stat-box.st-exception { border-top-color: #3244a8; }
+
+    .stat-box .n { font-size: 26px; font-weight: 800; }
+    .stat-box .l { font-size: 11px; color: var(--muted); font-weight: 700; margin-top: 3px; }
+
+    /* ===== 점검 항목 테이블 ===== */
+    table.items {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12.5px;
+    }
+
+    table.items thead th {
+        background: var(--navy);
+        color: #fff;
+        padding: 10px 8px;
+        text-align: left;
+        font-size: 11.5px;
+        letter-spacing: 0.3px;
+        position: sticky;
+        top: 54px;
+    }
+
+    table.items tbody tr.main-row:hover td { background: #fafbfd; }
+
+    table.items tbody tr.main-row td {
+        border-bottom: 1px solid var(--border);
+        padding: 9px 8px;
+        vertical-align: top;
+    }
+
+    table.items tbody tr.detail-row td {
+        border-bottom: 1px solid var(--border);
+        padding: 0 8px 10px;
+        background: #fbfbfc;
+        font-size: 12px;
+        color: #3a3a3c;
+    }
+
+    table.items tbody tr.detail-row { display: none; }
+    table.items tbody tr.detail-row.open { display: table-row; }
+
+    .col-no { width: 34px; color: var(--muted); }
+    .col-id { width: 60px; font-family: monospace; font-weight: 700; }
+    .col-title { min-width: 200px; }
+    .col-title .lvl { display: inline-block; font-size: 10px; color: var(--orange); background: var(--orange-bg); padding: 1px 5px; border-radius: 3px; margin-left: 4px; }
+    .col-auto { width: 96px; }
+    .col-final { width: 150px; }
+    .col-remark { min-width: 200px; }
+
+    .toggle-detail-btn {
+        border: none;
+        background: none;
+        color: var(--accent);
+        font-size: 11px;
+        font-weight: 700;
+        cursor: pointer;
+        padding: 0;
+        margin-top: 3px;
+        display: block;
+    }
+
+    .badge-mini {
+        display: inline-block;
+        font-size: 11px;
+        font-weight: 700;
+        padding: 2px 7px;
+        border-radius: 10px;
+    }
+
+    .badge-pass { background: var(--green-bg); color: var(--green); }
+    .badge-vuln { background: var(--red-bg); color: var(--red); }
+    .badge-manual { background: var(--orange-bg); color: var(--orange); }
+
+    select.final-status {
+        width: 100%;
+        padding: 5px 6px;
+        border-radius: 5px;
+        border: 1px solid var(--border);
+        font-size: 12px;
+        font-family: inherit;
+        background: #fff;
+        color: var(--ink);
+    }
+
+    select.final-status.opt-pass { background: var(--green-bg); border-color: #b7ddc3; color: var(--green); }
+    select.final-status.opt-vuln { background: var(--red-bg); border-color: #efc0ba; color: var(--red); }
+    select.final-status.opt-manual { background: var(--orange-bg); border-color: #f0d3a6; color: var(--orange); }
+    select.final-status.opt-exception { background: #eef1ff; border-color: #c6cdf7; color: #3244a8; }
+
+    textarea.remark {
+        width: 100%;
+        min-height: 40px;
+        resize: vertical;
+        border: 1px solid var(--border);
+        border-radius: 5px;
+        padding: 5px 7px;
+        font-size: 12px;
+        font-family: inherit;
+        color: var(--ink);
+    }
+
+    .print-only-text { display: none; }
+
+    .finding-text {
+        white-space: pre-wrap;
+        line-height: 1.5;
+        margin: 6px 0;
+    }
+
+    .cmd-mini {
+        background: #1c1c1e;
+        color: #f2f2f7;
+        font-family: "SFMono-Regular", Consolas, monospace;
+        font-size: 11px;
+        padding: 8px 10px;
+        border-radius: 6px;
+        white-space: pre-wrap;
+        word-break: break-all;
+        margin-top: 6px;
+    }
+
+    footer.doc-footer {
+        text-align: center;
+        font-size: 11px;
+        color: var(--muted);
+        margin-top: 28px;
+        padding-top: 16px;
+        border-top: 1px solid var(--border);
+        line-height: 1.7;
+    }
+
+    footer.doc-footer .confidential-line {
+        color: var(--red);
+        font-weight: 700;
+    }
+
+    /* ===== 인쇄 최적화 ===== */
+    @media print {
+        body { background: #fff; padding: 0; }
+        .toolbar { display: none; }
+        .page { border: none; border-radius: 0; box-shadow: none; margin-bottom: 0; }
+        .cover-page { break-after: page; min-height: 0; }
+        .doc { padding: 0; }
+        table.items thead th { position: static; background: var(--navy) !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .cover-top, .cover-mid { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        select.final-status, textarea.remark { display: none; }
+        .cover-logo-placeholder, .logo-remove-btn { display: none !important; }
+        .print-only-text { display: block; font-size: 12px; font-weight: 700; padding: 4px 2px; }
+        tr.main-row { break-inside: avoid; }
+        tr.detail-row.print-include { display: table-row !important; }
+        @page { size: A4; margin: 14mm 10mm; }
+    }
+</style>
+</head>
+<body>
+
+<div class="container">
+    <div class="toolbar">
+        <div class="left">
+            <button class="btn btn-primary" onclick="window.print()">🖨 인쇄 / PDF 저장</button>
+            <button class="btn" onclick="exportJson()">내보내기(JSON)</button>
+            <button class="btn" onclick="document.getElementById('import-file').click()">가져오기(JSON)</button>
+            <input type="file" id="import-file" accept="application/json" style="display:none" onchange="importJson(event)">
+            <label id="detail-toggle-label"><input type="checkbox" id="detail-all-toggle" onchange="toggleAllDetails(this.checked)"> 전체 상세정보 펼치기</label>
+        </div>
+        <div class="right">
+            <span id="save-status">편집 내용 자동 저장됨</span>
+            <button class="btn btn-danger" onclick="resetAll()">전체 초기화</button>
+        </div>
+    </div>
+
+    <!-- ===== 표지 ===== -->
+    <div class="page cover-page">
+        <div class="cover-top">
+            <span class="cover-badge">대외비 · CONFIDENTIAL</span>
+            <div class="cover-doc-id">
+                문서번호: <input type="text" id="meta-docid" placeholder="예: SEC-2026-001" oninput="scheduleSave()"><br>
+                생성 시각: <span id="cover-gen-time"></span>
+            </div>
+        </div>
+
+        <div class="cover-mid">
+            <div class="cover-kicker">2026 KISA 주요정보통신기반시설 기술적 취약점 분석·평가 방법 상세가이드</div>
+            <h1 class="cover-title">최종 서버 점검 보고서</h1>
+            <p class="cover-subtitle">Server Security Assessment &middot; Final Report</p>
+
+            <table class="cover-meta">
+                <tr>
+                    <td class="k">기관명/회사명</td>
+                    <td><input type="text" id="meta-org" placeholder="기관/회사명을 입력하세요" oninput="scheduleSave()"></td>
+                </tr>
+                <tr>
+                    <td class="k">점검대상 서버</td>
+                    <td><input type="text" id="meta-host" placeholder="서버명 / IP" oninput="scheduleSave()"></td>
+                </tr>
+                <tr>
+                    <td class="k">점검일자</td>
+                    <td><input type="date" id="meta-date" oninput="scheduleSave()"></td>
+                </tr>
+                <tr>
+                    <td class="k">점검자</td>
+                    <td><input type="text" id="meta-inspector" placeholder="점검자 성명" oninput="scheduleSave()"></td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="cover-logo-area" id="cover-logo-area">
+            <img id="cover-logo-img" class="cover-logo-img" alt="회사 로고" style="display:none;">
+            <div class="cover-logo-placeholder" id="cover-logo-placeholder">
+                <label for="logo-upload-input" class="logo-upload-label">+ 회사 로고 추가 (선택)</label>
+            </div>
+            <input type="file" id="logo-upload-input" accept="image/*" style="display:none" onchange="handleLogoUpload(event)">
+            <button class="logo-remove-btn" id="logo-remove-btn" style="display:none" onclick="removeLogo()">로고 제거</button>
+        </div>
+
+        <div class="cover-bottom">
+            <div class="approval-title">결재</div>
+            <table class="approval-box">
+                <thead>
+                    <tr>
+                        <th>담당 · 보안담당자</th>
+                        <th>검토 · 보안담당관</th>
+                        <th>승인 · 대표이사</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="sign-cell"><span class="sign-role">(서명 또는 인)</span><span class="sign-line"><span>일자:</span></span></td>
+                        <td class="sign-cell"><span class="sign-role">(서명 또는 인)</span><span class="sign-line"><span>일자:</span></span></td>
+                        <td class="sign-cell"><span class="sign-role">(서명 또는 인)</span><span class="sign-line"><span>일자:</span></span></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="confidential-notice">
+                [대외비 (Confidential)] 본 문서에는 기밀 및 민감 정보가 포함되어 있으므로 무단 배포 및 유출을 금합니다. 또한 관련 규정에 따라 처벌될 수 있습니다.
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== 본문 ===== -->
+    <div class="page doc">
+        <div class="doc-section-title">점검 결과 요약</div>
+        <div class="stat-row">
+            <div class="stat-box st-total"><div class="n" id="s-total">0</div><div class="l">전체 항목</div></div>
+            <div class="stat-box st-pass"><div class="n" style="color:var(--green)" id="s-pass">0</div><div class="l">양호</div></div>
+            <div class="stat-box st-vuln"><div class="n" style="color:var(--red)" id="s-vuln">0</div><div class="l">취약</div></div>
+            <div class="stat-box st-manual"><div class="n" style="color:var(--orange)" id="s-manual">0</div><div class="l">수동확인</div></div>
+            <div class="stat-box st-exception"><div class="n" style="color:#3244a8" id="s-exception">0</div><div class="l">예외처리(오탐)</div></div>
+        </div>
+
+        <div class="doc-section-title">점검 항목 상세</div>
+        <table class="items">
+            <thead>
+                <tr>
+                    <th class="col-no">No</th>
+                    <th class="col-id">항목ID</th>
+                    <th class="col-title">점검항목 / 중요도</th>
+                    <th class="col-auto">자동판정</th>
+                    <th class="col-final">최종판정</th>
+                    <th class="col-remark">비고 / 예외사유</th>
+                </tr>
+            </thead>
+            <tbody id="items-body">
+                <!-- FINAL_REPORT_ITEMS_PLACEHOLDER -->
+            </tbody>
+        </table>
+
+        <footer class="doc-footer">
+            <p>본 보고서는 자동 점검 결과에 점검자의 최종 검토·수기 판정을 반영한 문서입니다.</p>
+            <p class="confidential-line">[대외비 (Confidential)] 무단 배포 및 유출을 금합니다.</p>
+        </footer>
+    </div>
+</div>
+
+<script>
+    const STORAGE_KEY = "kisa_final_report_v1";
+    let saveTimer = null;
+    let currentLogoDataUrl = null;
+
+    function loadState() {
+        try {
+            return JSON.parse(localStorage.getItem(STORAGE_KEY)) || { meta: {}, items: {} };
+        } catch (e) {
+            return { meta: {}, items: {} };
+        }
+    }
+
+    function persist(state) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        const el = document.getElementById("save-status");
+        el.innerText = "저장됨 ✓ (" + new Date().toLocaleTimeString("ko-KR") + ")";
+        el.classList.add("saved");
+    }
+
+    function collectState() {
+        const state = { meta: {}, items: {}, logo: currentLogoDataUrl };
+        ["meta-org", "meta-host", "meta-date", "meta-inspector", "meta-docid"].forEach(id => {
+            state.meta[id] = document.getElementById(id).value;
+        });
+        document.querySelectorAll("tr.main-row").forEach(row => {
+            const id = row.getAttribute("data-item-id");
+            const select = row.querySelector(".final-status");
+            const remark = row.querySelector(".remark");
+            state.items[id] = { finalStatus: select.value, remark: remark.value };
+        });
+        return state;
+    }
+
+    function scheduleSave() {
+        clearTimeout(saveTimer);
+        document.getElementById("save-status").classList.remove("saved");
+        document.getElementById("save-status").innerText = "저장 중...";
+        saveTimer = setTimeout(() => persist(collectState()), 400);
+    }
+
+    function applyState(state) {
+        Object.entries(state.meta || {}).forEach(([id, val]) => {
+            const el = document.getElementById(id);
+            if (el) el.value = val;
+        });
+        applyLogo(state.logo || null);
+        document.querySelectorAll("tr.main-row").forEach(row => {
+            const id = row.getAttribute("data-item-id");
+            const saved = (state.items || {})[id];
+            if (saved) {
+                const select = row.querySelector(".final-status");
+                const remark = row.querySelector(".remark");
+                select.value = saved.finalStatus;
+                remark.value = saved.remark || "";
+                updateSelectStyle(select);
+            }
+        });
+        recomputeStats();
+    }
+
+    function updateSelectStyle(select) {
+        select.classList.remove("opt-pass", "opt-vuln", "opt-manual", "opt-exception");
+        const map = { "PASS": "opt-pass", "Vulnerable": "opt-vuln", "Manual Check": "opt-manual", "Exception": "opt-exception" };
+        select.classList.add(map[select.value] || "opt-manual");
+        const printText = row_printTextFor(select);
+        const printEl = select.closest("td").querySelector(".print-only-text");
+        if (printEl) printEl.innerText = printText;
+    }
+
+    function row_printTextFor(select) {
+        const labels = { "PASS": "양호", "Vulnerable": "취약", "Manual Check": "수동확인", "Exception": "예외처리(오탐)" };
+        return labels[select.value] || select.value;
+    }
+
+    function onFinalStatusChange(select) {
+        updateSelectStyle(select);
+        recomputeStats();
+        scheduleSave();
+    }
+
+    function recomputeStats() {
+        const counts = { total: 0, PASS: 0, Vulnerable: 0, "Manual Check": 0, Exception: 0 };
+        document.querySelectorAll(".final-status").forEach(sel => {
+            counts.total++;
+            counts[sel.value] = (counts[sel.value] || 0) + 1;
+        });
+        document.getElementById("s-total").innerText = counts.total;
+        document.getElementById("s-pass").innerText = counts.PASS;
+        document.getElementById("s-vuln").innerText = counts.Vulnerable;
+        document.getElementById("s-manual").innerText = counts["Manual Check"];
+        document.getElementById("s-exception").innerText = counts.Exception;
+    }
+
+    function toggleDetail(btn) {
+        const row = btn.closest("tr.main-row");
+        const detail = row.nextElementSibling;
+        const open = detail.classList.toggle("open");
+        detail.classList.toggle("print-include", open);
+        btn.innerText = open ? "상세정보 접기 ▴" : "상세정보 보기 ▾";
+    }
+
+    function toggleAllDetails(show) {
+        document.querySelectorAll("tr.detail-row").forEach(row => {
+            row.classList.toggle("open", show);
+            row.classList.toggle("print-include", show);
+        });
+        document.querySelectorAll(".toggle-detail-btn").forEach(btn => {
+            btn.innerText = show ? "상세정보 접기 ▴" : "상세정보 보기 ▾";
+        });
+    }
+
+    function resetAll() {
+        if (!confirm("모든 수기 편집 내용(최종판정, 비고, 상단 정보)을 초기화하시겠습니까? 이 작업은 되돌릴 수 없습니다.")) return;
+        localStorage.removeItem(STORAGE_KEY);
+        location.reload();
+    }
+
+    function exportJson() {
+        const state = collectState();
+        const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        const d = new Date();
+        const pad = n => String(n).padStart(2, "0");
+        a.download = `kisa_final_report_${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}.json`;
+        a.click();
+    }
+
+    function importJson(evt) {
+        const file = evt.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+            try {
+                const state = JSON.parse(reader.result);
+                applyState(state);
+                persist(state);
+                alert("가져오기 완료");
+            } catch (e) {
+                alert("JSON 파일을 읽을 수 없습니다: " + e.message);
+            }
+        };
+        reader.readAsText(file);
+        evt.target.value = "";
+    }
+
+    function applyLogo(dataUrl) {
+        currentLogoDataUrl = dataUrl || null;
+        const img = document.getElementById("cover-logo-img");
+        const placeholder = document.getElementById("cover-logo-placeholder");
+        const removeBtn = document.getElementById("logo-remove-btn");
+        if (currentLogoDataUrl) {
+            img.src = currentLogoDataUrl;
+            img.style.display = "block";
+            placeholder.style.display = "none";
+            removeBtn.style.display = "block";
+        } else {
+            img.style.display = "none";
+            img.src = "";
+            placeholder.style.display = "flex";
+            removeBtn.style.display = "none";
+        }
+    }
+
+    function handleLogoUpload(evt) {
+        const file = evt.target.files[0];
+        evt.target.value = "";
+        if (!file) return;
+        if (!file.type.startsWith("image/")) {
+            alert("이미지 파일만 업로드할 수 있습니다.");
+            return;
+        }
+        // localStorage 용량을 크게 잡아먹지 않도록 로고 파일 크기를 2MB로 제한
+        if (file.size > 2 * 1024 * 1024) {
+            alert("로고 파일이 너무 큽니다. 2MB 이하의 이미지를 사용해 주세요.");
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = () => {
+            applyLogo(reader.result);
+            scheduleSave();
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function removeLogo() {
+        applyLogo(null);
+        scheduleSave();
+    }
+
+    function initCoverMeta() {
+        const now = new Date();
+        const pad = n => String(n).padStart(2, "0");
+        document.getElementById("cover-gen-time").innerText =
+            `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    }
+
+    window.addEventListener("load", () => {
+        if (!document.getElementById("meta-date").value) {
+            document.getElementById("meta-date").value = new Date().toISOString().slice(0, 10);
+        }
+        initCoverMeta();
+        document.querySelectorAll(".final-status").forEach(updateSelectStyle);
+        recomputeStats();
+        applyState(loadState());
+    });
+</script>
+</body>
+</html>
