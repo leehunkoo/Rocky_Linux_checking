@@ -40,7 +40,7 @@ def Check():
     ]
 
     try:
-        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
         stdout, _ = process.communicate(timeout=120)
 
         lines = [line.strip() for line in stdout.splitlines() if line.strip()]

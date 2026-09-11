@@ -17,12 +17,18 @@ def Check():
         "current_setting": "",
         "remediation_type": "Command",
         "remediation_cmd": (
-            "# 1. Rocky Linux DNF 패키지 관리자를 통한 보안 패치 및 커널 최신화\n"
-            "# (서비스 영향도를 고려하여 사전 승인된 정비 시간대에 실행 권장)\n"
-            "# dnf check-update --security\n"
-            "# dnf upgrade --security -y\n"
-            "# 또는 전체 최신화:\n"
-            "# dnf update -y"
+            "# [수동 점검 절차 및 명령어]\n"
+            "# 1. 적용 가능한 보안 업데이트 존재 여부 확인:\n"
+            "dnf check-update --security\n"
+            "# -> 출력 결과에 패키지 목록이 없으면 최신 보안 패치가 모두 적용된 양호 상태입니다.\n\n"
+            "# 2. 최근 패키지 및 커널 업데이트 이력 확인:\n"
+            "dnf history list\n"
+            "# -> 정기적으로(월/분기별) 시스템 패치를 수행한 이력이 있는지 확인합니다.\n\n"
+            "# 3. 보안 패치 적용 정책 수립 확인:\n"
+            "# -> 조직 내 '보안 패치 관리 지침' 또는 정기 점검 계획이 수립되어 운영 중인지 검토합니다.\n\n"
+            "# [미흡 시 조치: 보안 업데이트 일괄 적용]\n"
+            "# (운영 서비스 영향도를 고려하여 사전 승인된 정비 시간에 실행 권장)\n"
+            "sudo dnf upgrade --security -y"
         ),
         "exception_guide": "[양호] 패치 적용 정책을 수립하여 주기적으로 패치 관리를 수행하고 있으며, 최신 패치 배포 내용을 확인하고 커널 및 OS 버전에 유기적으로 적용한 경우"
     }
@@ -32,7 +38,7 @@ def Check():
 
     # [Step 1] hostnamectl을 활용한 OS 및 커널 정보 수집
     try:
-        out = subprocess.check_output(["hostnamectl"], text=True, stderr=subprocess.DEVNULL)
+        out = subprocess.check_output(["hostnamectl"], universal_newlines=True, stderr=subprocess.DEVNULL)
         for line in out.splitlines():
             if "Operating System" in line:
                 os_info = line.split(":", 1)[1].strip()
@@ -56,7 +62,7 @@ def Check():
 
     if kernel_info == "Unknown Kernel":
         try:
-            kernel_info = subprocess.check_output(["uname", "-r"], text=True, stderr=subprocess.DEVNULL).strip()
+            kernel_info = subprocess.check_output(["uname", "-r"], universal_newlines=True, stderr=subprocess.DEVNULL).strip()
         except Exception:
             pass
 

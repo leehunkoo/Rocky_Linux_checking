@@ -44,7 +44,7 @@ def Check():
     try:
         # KISA 표준 진단 기법인 find /dev -type f 규격 구현 (-xdev로 /dev 자체 파일시스템 경계 내로 제한)
         cmd = ["find", dev_path, "-xdev", "-type", "f"]
-        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
         stdout, _ = process.communicate()
 
         found_files = [line.strip() for line in stdout.splitlines() if line.strip()]

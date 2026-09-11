@@ -38,11 +38,11 @@ def Check():
 
     # [Step 1] Rocky Linux 표준 방화벽 firewalld 활성화 및 정책 검증
     try:
-        fw_state = subprocess.check_output(["firewall-cmd", "--state"], text=True, stderr=subprocess.DEVNULL, env=_c_env).strip()
+        fw_state = subprocess.check_output(["firewall-cmd", "--state"], universal_newlines=True, stderr=subprocess.DEVNULL, env=_c_env).strip()
         if fw_state == "running":
             firewalld_active = True
             # 활성 zone 정보 확인
-            fw_zones = subprocess.check_output(["firewall-cmd", "--get-active-zones"], text=True, stderr=subprocess.DEVNULL, env=_c_env)
+            fw_zones = subprocess.check_output(["firewall-cmd", "--get-active-zones"], universal_newlines=True, stderr=subprocess.DEVNULL, env=_c_env)
             if fw_zones.strip():
                 detection_details.append("firewalld 방화벽 활성화 및 활성 존 식별됨")
             else:
@@ -59,7 +59,7 @@ def Check():
 
     # [Step 2] nftables / iptables 검증 (firewalld 대신 사용되는 환경)
     try:
-        nft_out = subprocess.check_output(["nft", "list", "ruleset"], text=True, stderr=subprocess.DEVNULL, env=_c_env)
+        nft_out = subprocess.check_output(["nft", "list", "ruleset"], universal_newlines=True, stderr=subprocess.DEVNULL, env=_c_env)
         if "chain" in nft_out and ("accept" in nft_out.lower() or "drop" in nft_out.lower()):
             nftables_has_rules = True
             detection_details.append("nftables 접근 제어 룰셋 활성화 식별됨")
@@ -67,7 +67,7 @@ def Check():
         pass
 
     try:
-        iptables_output = subprocess.check_output(["iptables", "-L", "INPUT", "-n"], text=True, stderr=subprocess.DEVNULL, env=_c_env)
+        iptables_output = subprocess.check_output(["iptables", "-L", "INPUT", "-n"], universal_newlines=True, stderr=subprocess.DEVNULL, env=_c_env)
         rules = [l.strip() for l in iptables_output.splitlines() if l.strip()]
         if len(rules) > 2:
             iptables_has_rules = True

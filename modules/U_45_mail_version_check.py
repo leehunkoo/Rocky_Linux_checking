@@ -40,7 +40,7 @@ def Check():
     for active_svc in active_services:
         if active_svc == "postfix":
             try:
-                version_out = subprocess.check_output(["postconf", "mail_version"], text=True, stderr=subprocess.DEVNULL)
+                version_out = subprocess.check_output(["postconf", "mail_version"], universal_newlines=True, stderr=subprocess.DEVNULL)
                 if version_out:
                     version_details.append(f"Postfix({version_out.strip()})")
             except Exception:
@@ -48,7 +48,7 @@ def Check():
 
         elif active_svc == "sendmail":
             try:
-                proc = subprocess.Popen(["sendmail", "-d0.1", "-bt"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+                proc = subprocess.Popen(["sendmail", "-d0.1", "-bt"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, universal_newlines=True)
                 stdout, _ = proc.communicate(input="exit\n")
                 version_match = None
                 for line in stdout.splitlines():

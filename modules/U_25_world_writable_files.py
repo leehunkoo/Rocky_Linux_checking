@@ -45,7 +45,7 @@ def Check():
 
     try:
         # find 명령어 수행하여 일반 사용자 쓰기 비트(Others Write)가 활성화된 파일 추출
-        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
         stdout, _ = process.communicate()
         
         found_files = [line.strip() for line in stdout.splitlines() if line.strip()]

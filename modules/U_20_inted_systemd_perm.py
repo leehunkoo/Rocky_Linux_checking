@@ -39,7 +39,9 @@ def Check():
         for pattern in patterns:
             matches = glob.glob(pattern, recursive=True) if "**" in pattern else glob.glob(pattern)
             for file_path in matches:
-                if not os.path.isfile(file_path):
+                # 심볼릭 링크(*.wants 하위 서비스 활성화 링크 등)는 자체 권한이 777로 고정되어 있고
+                # 실제 설정 파일이 아니므로 점검 대상에서 제외 (정규 파일만 점검)
+                if os.path.islink(file_path) or not os.path.isfile(file_path):
                     continue
 
                 try:

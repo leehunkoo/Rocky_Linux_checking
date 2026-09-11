@@ -36,7 +36,7 @@ def Check():
 
     bind_version = "버전 획득 실패"
     try:
-        version_out = subprocess.check_output(["named", "-v"], text=True, stderr=subprocess.DEVNULL)
+        version_out = subprocess.check_output(["named", "-v"], universal_newlines=True, stderr=subprocess.DEVNULL)
         if version_out:
             bind_version = version_out.strip()
     except Exception:

@@ -74,7 +74,7 @@ def Check():
                         try:
                             out = subprocess.check_output(
                                 ["last", "-n", "1", username],
-                                text=True, stderr=subprocess.DEVNULL
+                                universal_newlines=True, stderr=subprocess.DEVNULL
                             )
                             # last는 tty 출력 시 계정명을 8자로 잘라 표시하므로
                             # username 문자열 포함 여부로 판단하지 않고, 실제 로그인, 레코드 라인이 있는지(꼬리의 "wtmp begins.." 문구 제외)로 판단

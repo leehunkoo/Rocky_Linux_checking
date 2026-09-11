@@ -657,17 +657,40 @@
 
     function copyCmd(btn, encodedText) {
         const text = decodeURIComponent(encodedText);
-        navigator.clipboard.writeText(text).then(() => {
+        const doSuccess = () => {
             const original = btn.innerText;
-            btn.innerText = "복사됨 ✓";
+            btn.innerText = "복사 완료";
             btn.classList.add("copied");
             setTimeout(() => {
                 btn.innerText = original;
                 btn.classList.remove("copied");
             }, 1500);
-        }).catch(() => {
-            btn.innerText = "복사 실패";
-        });
+        };
+
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(text).then(doSuccess).catch(() => fallbackCopy(text, doSuccess));
+        } else {
+            fallbackCopy(text, doSuccess);
+        }
+    }
+
+    function fallbackCopy(text, onSuccess) {
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        ta.style.position = "fixed";
+        ta.style.top = "-9999px";
+        ta.style.left = "-9999px";
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        try {
+            document.execCommand("copy");
+            if (onSuccess) onSuccess();
+        } catch (err) {
+            alert("클립보드 복사에 실패했습니다. 직접 복사해 주세요.");
+        } finally {
+            ta.remove();
+        }
     }
 
     function filterStatus(status, btnEl) {
