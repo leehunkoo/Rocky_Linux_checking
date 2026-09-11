@@ -331,8 +331,10 @@ def build_final_report(results):
             </td>
             <td class="col-auto"><span class="badge-mini {badge_class}">{auto_label}</span></td>
             <td class="col-final">
-                <select class="final-status" onchange="onFinalStatusChange(this)">{options}</select>
-                <span class="print-only-text"></span>
+                <div class="col-final-wrap">
+                    <select class="final-status" autocomplete="off" onchange="onFinalStatusChange(this)">{options}</select>
+                    <span class="print-only-text"></span>
+                </div>
             </td>
             <td class="col-remark"><textarea class="remark" oninput="scheduleSave()" placeholder="특이사항/예외 사유 입력"></textarea></td>
         </tr>

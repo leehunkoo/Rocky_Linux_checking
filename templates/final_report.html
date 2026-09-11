@@ -74,6 +74,8 @@
     .btn-primary:hover { background: #084bb3; }
     .btn-danger { color: var(--red); border-color: #f0c4bf; }
     .btn-danger:hover { background: var(--red-bg); }
+    .btn-sync { color: #0284c7; border-color: #bae6fd; }
+    .btn-sync:hover { background: #f0f9ff; border-color: #7dd3fc; }
 
     #save-status { font-size: 12px; color: var(--muted); min-width: 90px; }
     #save-status.saved { color: var(--green); }
@@ -486,6 +488,35 @@
     select.final-status.opt-vuln { background: var(--red-bg); border-color: #efc0ba; color: var(--red); }
     select.final-status.opt-manual { background: var(--orange-bg); border-color: #f0d3a6; color: var(--orange); }
     select.final-status.opt-exception { background: #eef1ff; border-color: #c6cdf7; color: #3244a8; }
+
+    .col-final-wrap {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .override-tag {
+        display: inline-block;
+        font-size: 10.5px;
+        font-weight: 700;
+        padding: 2px 6px;
+        border-radius: 4px;
+        text-align: center;
+        letter-spacing: -0.2px;
+        line-height: 1.3;
+    }
+
+    .override-tag.override-warn {
+        background: #fee2e2;
+        color: #b91c1c;
+        border: 1px solid #fca5a5;
+    }
+
+    .override-tag.override-info {
+        background: #f1f5f9;
+        color: #475569;
+        border: 1px solid #cbd5e1;
+    }
 
     textarea.remark {
         width: 100%;
@@ -976,7 +1007,7 @@
         .doc { padding: 0; }
         table.items thead th { position: static; background: var(--navy) !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         .cover-top, .cover-mid { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-        select.final-status, textarea.remark { display: none; }
+        select.final-status, textarea.remark, .override-tag { display: none !important; }
         .cover-logo-placeholder, .logo-remove-btn { display: none !important; }
         .print-only-text { display: block; font-size: 12px; font-weight: 700; padding: 4px 2px; }
         tr.main-row { break-inside: avoid; }
@@ -1014,6 +1045,7 @@
         <div class="left">
             <button class="btn btn-primary" onclick="window.print()"><svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" stroke-width="2" fill="none" style="vertical-align:-1px; margin-right:4px;"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>인쇄 / PDF 저장</button>
             <button class="btn btn-fix-all" onclick="openFixModal()"><svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" stroke-width="2" fill="none" style="vertical-align:-1px; margin-right:4px;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>취약 항목 조치 스크립트</button>
+            <button class="btn btn-sync" onclick="syncAllToAutoStatus()" title="모든 항목의 최종 판정을 현재 시스템 자동 점검 결과와 1:1로 일치시킵니다"><svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" stroke-width="2" fill="none" style="vertical-align:-1px; margin-right:4px;"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>자동판정 1:1 동기화</button>
             <button class="btn" onclick="exportJson()">내보내기(JSON)</button>
             <button class="btn" onclick="document.getElementById('import-file').click()">가져오기(JSON)</button>
             <input type="file" id="import-file" accept="application/json" style="display:none" onchange="importJson(event)">
@@ -1204,47 +1236,77 @@
     function persist(state) {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
         const el = document.getElementById("save-status");
-        el.innerText = "저장 완료 (" + new Date().toLocaleTimeString("ko-KR") + ")";
-        el.classList.add("saved");
+        if (el) {
+            el.innerText = "저장 완료 (" + new Date().toLocaleTimeString("ko-KR") + ")";
+            el.classList.add("saved");
+        }
     }
 
     function collectState() {
         const state = { meta: {}, items: {}, logo: currentLogoDataUrl };
         ["meta-org", "meta-host", "meta-date", "meta-inspector", "meta-docid"].forEach(id => {
-            state.meta[id] = document.getElementById(id).value;
+            const el = document.getElementById(id);
+            if (el) state.meta[id] = el.value;
         });
         document.querySelectorAll("tr.main-row").forEach(row => {
             const id = row.getAttribute("data-item-id");
             const select = row.querySelector(".final-status");
             const remark = row.querySelector(".remark");
-            state.items[id] = { finalStatus: select.value, remark: remark.value };
+            const isUserModified = row.getAttribute("data-user-modified") === "true";
+            state.items[id] = {
+                finalStatus: select ? select.value : "",
+                remark: remark ? remark.value : "",
+                userModified: isUserModified
+            };
         });
         return state;
     }
 
     function scheduleSave() {
         clearTimeout(saveTimer);
-        document.getElementById("save-status").classList.remove("saved");
-        document.getElementById("save-status").innerText = "저장 중...";
+        const el = document.getElementById("save-status");
+        if (el) {
+            el.classList.remove("saved");
+            el.innerText = "저장 중...";
+        }
         saveTimer = setTimeout(() => persist(collectState()), 400);
     }
 
     function applyState(state) {
         Object.entries(state.meta || {}).forEach(([id, val]) => {
             const el = document.getElementById(id);
-            if (el) el.value = val;
+            if (el && val !== undefined && val !== "") el.value = val;
         });
         applyLogo(state.logo || null);
+
         document.querySelectorAll("tr.main-row").forEach(row => {
             const id = row.getAttribute("data-item-id");
+            const autoStatus = row.getAttribute("data-auto-status") || "PASS";
+            const select = row.querySelector(".final-status");
+            const remark = row.querySelector(".remark");
             const saved = (state.items || {})[id];
+
             if (saved) {
-                const select = row.querySelector(".final-status");
-                const remark = row.querySelector(".remark");
-                select.value = saved.finalStatus;
-                remark.value = saved.remark || "";
-                updateSelectStyle(select);
+                if (saved.remark !== undefined && remark) {
+                    remark.value = saved.remark || "";
+                }
+
+                // [1:1 판정 동기화 핵심]:
+                // 사용자가 명시적으로 수기 변경한 항목(userModified === true)만 저장된 최종판정으로 복원!
+                // 수기 변경 이력이 없거나 이전 기본 캐시였던 항목은 최신 자동점검 결과(data-auto-status)를
+                // 엄격하게 1:1로 유지하여 점검 결과가 취약인데 양호로 덮어써지는 문제를 완벽히 방지함.
+                if (saved.userModified === true && saved.finalStatus && select) {
+                    row.setAttribute("data-user-modified", "true");
+                    select.value = saved.finalStatus;
+                } else if (select) {
+                    row.removeAttribute("data-user-modified");
+                    select.value = autoStatus;
+                }
+            } else if (select) {
+                row.removeAttribute("data-user-modified");
+                select.value = autoStatus;
             }
+            if (select) updateSelectStyle(select);
         });
         recomputeStats();
     }
@@ -1253,8 +1315,33 @@
         select.classList.remove("opt-pass", "opt-vuln", "opt-manual", "opt-exception");
         const map = { "PASS": "opt-pass", "Vulnerable": "opt-vuln", "Manual Check": "opt-manual", "Exception": "opt-exception" };
         select.classList.add(map[select.value] || "opt-manual");
+
+        const row = select.closest("tr.main-row");
+        const autoStatus = row ? (row.getAttribute("data-auto-status") || "PASS") : "PASS";
+        const wrap = select.closest(".col-final-wrap") || select.closest("td");
+
+        // 자동점검 결과와 최종판정이 불일치할 때(수기 변경 시) 직관적인 알림 태그 표시
+        let overrideBadge = wrap.querySelector(".override-tag");
+        if (select.value !== autoStatus) {
+            if (!overrideBadge) {
+                overrideBadge = document.createElement("span");
+                wrap.appendChild(overrideBadge);
+            }
+            if (autoStatus === "Vulnerable" && select.value !== "Vulnerable") {
+                overrideBadge.className = "override-tag override-warn";
+                overrideBadge.innerText = "수기변경(자동:취약)";
+                overrideBadge.title = "자동 점검 결과는 [취약]이었으나 최종판정이 변경되었습니다.";
+            } else {
+                overrideBadge.className = "override-tag override-info";
+                overrideBadge.innerText = "수기변경";
+                overrideBadge.title = "자동 점검 결과와 다르게 최종판정이 수기 변경되었습니다.";
+            }
+        } else {
+            if (overrideBadge) overrideBadge.remove();
+        }
+
         const printText = row_printTextFor(select);
-        const printEl = select.closest("td").querySelector(".print-only-text");
+        const printEl = wrap.querySelector(".print-only-text") || select.closest("td").querySelector(".print-only-text");
         if (printEl) printEl.innerText = printText;
     }
 
@@ -1264,17 +1351,50 @@
     }
 
     function onFinalStatusChange(select) {
+        const row = select.closest("tr.main-row");
+        const autoStatus = row ? (row.getAttribute("data-auto-status") || "PASS") : "PASS";
+        if (select.value === autoStatus) {
+            row.removeAttribute("data-user-modified");
+        } else {
+            row.setAttribute("data-user-modified", "true");
+        }
         updateSelectStyle(select);
         recomputeStats();
         scheduleSave();
     }
 
+    function syncAllToAutoStatus() {
+        if (!confirm("모든 항목의 최종 판정을 현재 시스템의 [자동 점검 결과]와 1:1로 일치시키겠습니까?\n\n- 점검 결과가 '취약'인 항목은 최종판정도 즉시 '취약'으로 맞춰집니다.\n- 입력하신 비고/특이사항 내용은 그대로 유지됩니다.")) return;
+        document.querySelectorAll("tr.main-row").forEach(row => {
+            const autoStatus = row.getAttribute("data-auto-status") || "PASS";
+            const select = row.querySelector(".final-status");
+            if (select) {
+                select.value = autoStatus;
+                row.removeAttribute("data-user-modified");
+                updateSelectStyle(select);
+            }
+        });
+        recomputeStats();
+        scheduleSave();
+        showToast("모든 항목의 최종 판정이 자동 점검 결과와 1:1로 동기화되었습니다.");
+    }
+
     function recomputeStats() {
         const counts = { total: 0, PASS: 0, Vulnerable: 0, "Manual Check": 0, Exception: 0 };
-        document.querySelectorAll(".final-status").forEach(sel => {
+        const autoCounts = { total: 0, PASS: 0, Vulnerable: 0, "Manual Check": 0 };
+
+        document.querySelectorAll("tr.main-row").forEach(row => {
+            const autoStatus = row.getAttribute("data-auto-status") || "PASS";
+            const sel = row.querySelector(".final-status");
+            const finalVal = sel ? sel.value : autoStatus;
+
+            autoCounts.total++;
+            autoCounts[autoStatus] = (autoCounts[autoStatus] || 0) + 1;
+
             counts.total++;
-            counts[sel.value] = (counts[sel.value] || 0) + 1;
+            counts[finalVal] = (counts[finalVal] || 0) + 1;
         });
+
         document.getElementById("s-total").innerText = counts.total;
         document.getElementById("s-pass").innerText = counts.PASS;
         document.getElementById("s-vuln").innerText = counts.Vulnerable;
@@ -1285,8 +1405,27 @@
         const banner = document.getElementById("vuln-quick-banner");
         const bannerCount = document.getElementById("banner-vuln-count");
         if (banner && bannerCount) {
-            bannerCount.innerText = counts.Vulnerable;
-            banner.style.display = counts.Vulnerable > 0 ? "flex" : "none";
+            if (counts.Vulnerable > 0) {
+                bannerCount.innerText = counts.Vulnerable;
+                banner.style.display = "flex";
+                banner.style.background = "#fff7ed";
+                banner.style.borderColor = "#fed7aa";
+                const bannerTextEl = banner.querySelector(".banner-text");
+                if (bannerTextEl) {
+                    bannerTextEl.innerHTML = `현재 <strong style="color:var(--red);"><span id="banner-vuln-count">${counts.Vulnerable}</span>개 항목</strong>이 <strong>취약</strong> 상태입니다. 터미널에 붙여넣어 즉시 해결할 수 있는 조치 스크립트가 준비되어 있습니다.`;
+                }
+            } else if (autoCounts.Vulnerable > 0) {
+                // 최종판정 취약이 0개더라도 자동점검 상 취약이 있으면 경고 표시!
+                banner.style.display = "flex";
+                banner.style.background = "#eff6ff";
+                banner.style.borderColor = "#bfdbfe";
+                const bannerTextEl = banner.querySelector(".banner-text");
+                if (bannerTextEl) {
+                    bannerTextEl.innerHTML = `자동 점검 결과 상 <strong style="color:var(--red);">${autoCounts.Vulnerable}개 항목</strong>이 취약으로 탐지되었으나, 현재 최종판정이 수기 조정되어 있습니다. 상단 <strong>[자동판정 1:1 동기화]</strong> 버튼으로 원클릭 일치가 가능합니다.`;
+                }
+            } else {
+                banner.style.display = "none";
+            }
         }
     }
 
@@ -1506,6 +1645,14 @@
     function resetAll() {
         if (!confirm("모든 수기 편집 내용(최종판정, 비고, 상단 정보)을 초기화하시겠습니까? 이 작업은 되돌릴 수 없습니다.")) return;
         localStorage.removeItem(STORAGE_KEY);
+        document.querySelectorAll("tr.main-row").forEach(row => {
+            const autoStatus = row.getAttribute("data-auto-status") || "PASS";
+            const select = row.querySelector(".final-status");
+            const remark = row.querySelector(".remark");
+            if (select) select.value = autoStatus;
+            if (remark) remark.value = "";
+            row.removeAttribute("data-user-modified");
+        });
         location.reload();
     }
 
@@ -1594,9 +1741,9 @@
             document.getElementById("meta-date").value = new Date().toISOString().slice(0, 10);
         }
         initCoverMeta();
+        applyState(loadState());
         document.querySelectorAll(".final-status").forEach(updateSelectStyle);
         recomputeStats();
-        applyState(loadState());
     });
 </script>
 </body>
